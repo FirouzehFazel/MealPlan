@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#b5e550" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MealPlan" />
+  <meta name="description" content="AI-powered high-protein daily meal planner" />
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <title>Meal Planner</title>
+
+  <style>
+    :root {
+      --bg:       #0e0f0d;
+      --s1:       #161714;
+      --s2:       #1e1f1c;
+      --border:   #2a2b28;
+      --text:     #e8e9e4;
+      --muted:    #7a7b74;
+      --green:    #b5e550;
+      --yellow:   #e5c550;
+      --blue:     #50c0e5;
+      --orange:   #e5a050;
+      --pink:     #e550b5;
+      --red:      #e55050;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overscroll-behavior: none;
+    }
+
+    /* ── Layout ── */
+    .app {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: calc(var(--safe-top) + 32px) 20px calc(var(--safe-bot) + 48px);
+    }
+
+    /* ── Header ── */
+    .label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(32px, 10vw, 56px);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -.02em;
+    }
+
+    h1 span { color: var(--green); }
+
+    .badges {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Day tabs ── */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 36px 0 20px;
+    }
+
+    .tab {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      letter-spacing: .08em;
+      padding: 9px 16px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .18s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .tab:hover  { border-color: var(--green); color: var(--green); }
+    .tab.active { background: var(--green); color: var(--bg); border-color: var(--green); font-weight: 500; }
+
+    /* ── Generate button ── */
+    .gen-btn {
+      width: 100%;
+      padding: 18px;
+      background: var(--green);
+      color: var(--bg);
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      touch-action: manipulation;
+    }
+
+    .gen-btn:active:not(:disabled) { transform: scale(.98); }
+    .gen-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin .9s linear infinite; }
+
+    /* ── Install banner ── */
+    .install-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+
+    .install-banner.visible { display: flex; }
+
+    .install-btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .08em;
+      padding: 7px 14px;
+      background: var(--green);
+      color: var(--bg);
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .dismiss-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+
+    /* ── iOS install tip ── */
+    .ios-tip {
+      display: none;
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--blue);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .ios-tip.visible { display: block; }
+    .ios-tip strong { color: var(--blue); }
+
+    /* ── Error box ── */
+    .error {
+      background: rgba(229,80,80,.1);
+      border: 1px solid rgba(229,80,80,.3);
+      border-radius: 8px;
+      padding: 14px 18px;
+      color: var(--red);
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Results ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .results { animation: fadeUp .35s ease; }
+
+    /* ingredient chips */
+    .chip-box {
+      background: var(--s1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+
+    .section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .chip {
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 9px;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* macro grid */
+    .macro-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      background: var(--s1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 400px) {
+      .macro-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .macro-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .macro-val small { font-size: 11px; }
+    .macro-lbl { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+    .macro-tgt { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); }
+
+    .bar-wrap { margin-top: 5px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 2px; transition: width .5s ease; }
+
+    /* meal cards */
+    .meals { display: flex; flex-direction: column; gap: 12px; }
+
+    .card {
+      background: var(--s1);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--s2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .meal-type { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; }
+    .meal-kcal { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+
+    .meal-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 17px;
+      font-weight: 700;
+      padding: 14px 16px 8px;
+    }
+
+    .ing-list { padding: 0 16px 14px; display: flex; flex-direction: column; gap: 5px; }
+
+    .ing-row { display: flex; gap: 10px; font-size: 13px; align-items: baseline; }
+
+    .ing-amt {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--yellow);
+      min-width: 70px;
+      flex-shrink: 0;
+    }
+
+    .card-foot {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Install banner (Android/Desktop) -->
+  <div class="install-banner" id="installBanner">
+    <span>📲 Install as app for quick access</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="install-btn" id="installBtn">Install</button>
+      <button class="dismiss-btn" id="dismissBtn">✕</button>
+    </div>
+  </div>
+
+  <!-- iOS install tip -->
+  <div class="ios-tip" id="iosTip">
+    📲 <strong>Add to Home Screen:</strong> tap the Share button (□↑) at the bottom of Safari, then tap <strong>"Add to Home Screen"</strong> to install this app on your iPhone.
+    <button class="dismiss-btn" id="dismissIos" style="float:right;margin-top:-2px">✕</button>
+  </div>
+
+  <!-- Header -->
+  <div class="label">// AI-Powered Daily Planner</div>
+  <h1>High-Protein<br><span>Meal Plan</span></h1>
+  <div class="badges">
+    <span class="badge"><span class="dot" style="background:var(--pink)"></span>1400–1500 kcal</span>
+    <span class="badge"><span class="dot" style="background:var(--green)"></span>Protein 113g</span>
+    <span class="badge"><span class="dot" style="background:var(--blue)"></span>Carbs 128g</span>
+    <span class="badge"><span class="dot" style="background:var(--orange)"></span>Fat ≤55g</span>
+  </div>
+
+  <!-- Day tabs -->
+  <div class="tabs" id="tabs"></div>
+
+  <!-- Generate button -->
+  <button class="gen-btn" id="genBtn">
+    <span id="btnIcon">✦</span>
+    <span id="btnText">Generate Day 1's Meal Plan</span>
+  </button>
+
+  <!-- Error -->
+  <div class="error" id="errorBox" style="display:none"></div>
+
+  <!-- Results -->
+  <div id="results"></div>
+
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const DAY_DATA = {
+  1: { label:"Day 1", ingredients:["fromage blanc","banana","peanut butter","chicken breast","rice","vegetables","olive oil","eggs","feta","salad greens","avocado","apple","mixed nuts"] },
+  2: { label:"Day 2", ingredients:["fromage blanc","apple","raisins","turkey breast","rice cakes","mushrooms","ground beef","pasta","tomato","mixed nuts"] },
+  3: { label:"Day 3", ingredients:["protein shake","banana","chicken breast","whole-wheat bread","eggs","feta","mushrooms","dried figs","mixed nuts"] },
+  4: { label:"Day 4", ingredients:["fromage blanc","banana","ground beef","rice","vegetables","tofu","salad greens","olive oil","apple","mixed nuts"] },
+  5: { label:"Day 5", ingredients:["fromage blanc","apple","raisins","chicken breast","pasta","mushrooms","eggs","feta","salad greens","mixed nuts"] },
+  6: { label:"Day 6", ingredients:["protein shake","banana","turkey breast","rice","vegetables","tofu","eggs","salad greens","dried figs","walnuts"] },
+  7: { label:"Day 7", ingredients:["fromage blanc","banana","peanut butter","ground beef","whole-wheat bread","chicken breast","eggs","salad greens","apple","mixed nuts"] },
+};
+
+const TARGETS     = { cal:1500, protein:113, carbs:128, fats:55 };
+const MEAL_TYPES  = ["Breakfast","Lunch","Dinner","Snack"];
+const TYPE_COLORS = ["#e5c550","#50c0e5","#b5e550","#e5a050"];
+const MACRO_COLORS= { cal:"#e550b5", protein:"#b5e550", carbs:"#50c0e5", fats:"#e5a050" };
+
+let activeDay = 1;
+let isLoading = false;
+
+// ── Build tabs ────────────────────────────────────────────────────────────────
+const tabsEl = document.getElementById("tabs");
+Object.entries(DAY_DATA).forEach(([d]) => {
+  const btn = document.createElement("button");
+  btn.className = "tab" + (Number(d) === 1 ? " active" : "");
+  btn.textContent = DAY_DATA[d].label;
+  btn.addEventListener("click", () => {
+    if (isLoading) return;
+    activeDay = Number(d);
+    document.querySelectorAll(".tab").forEach((b, i) => b.classList.toggle("active", i + 1 === activeDay));
+    document.getElementById("results").innerHTML = "";
+    document.getElementById("errorBox").style.display = "none";
+    document.getElementById("btnText").textContent = `Generate ${DAY_DATA[activeDay].label}'s Meal Plan`;
+  });
+  tabsEl.appendChild(btn);
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function macroStatus(val, target, key) {
+  if (key === "carbs" || key === "fats") {
+    if (val > target)          return "over";
+    if (val < target * 0.92)   return "warn";
+    return "ok";
+  }
+  if (key === "cal") {
+    if (val > target * 1.02)   return "over";
+    if (val < target * 0.95)   return "warn";
+    return "ok";
+  }
+  if (val < target * 0.9)      return "warn";
+  if (val > target * 1.1)      return "over";
+  return "ok";
+}
+
+const STATUS_COLOR = { ok:"#b5e550", warn:"#e5c550", over:"#e55050" };
+
+// ── Render results ────────────────────────────────────────────────────────────
+function render(data) {
+  const ing = DAY_DATA[activeDay].ingredients;
+
+  let html = `<div class="results">`;
+
+  // Ingredient chips
+  html += `<div class="chip-box"><div class="section-label">Today's Ingredients</div><div class="chips">`;
+  ing.forEach(i => { html += `<span class="chip">${i}</span>`; });
+  html += `</div></div>`;
+
+  // Macro grid
+  html += `<div class="macro-grid">`;
+  [["cal","Calories","kcal"],["protein","Protein","g"],["carbs","Carbs","g"],["fats","Fat","g"]].forEach(([k, lbl, unit]) => {
+    const val = data.totals[k];
+    const st  = macroStatus(val, TARGETS[k], k);
+    const pct = Math.min((val / TARGETS[k]) * 100, 100);
+    html += `<div>
+      <div class="macro-val" style="color:${MACRO_COLORS[k]}">${val}<small> ${unit}</small></div>
+      <div class="macro-lbl">${lbl}</div>
+      <div class="macro-tgt">target: ${TARGETS[k]}${unit}</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${STATUS_COLOR[st]}"></div></div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Meal cards
+  html += `<div class="meals">`;
+  data.meals.forEach((meal, i) => {
+    html += `<div class="card">
+      <div class="card-head">
+        <span class="meal-type" style="color:${TYPE_COLORS[i]}">${MEAL_TYPES[i]}</span>
+        <span class="meal-kcal">~${meal.calories} kcal</span>
+      </div>
+      <div class="meal-name">${meal.name}</div>
+      <div class="ing-list">`;
+    meal.ingredients.forEach(ig => {
+      html += `<div class="ing-row"><span class="ing-amt">${ig.amount}</span><span>${ig.name}</span></div>`;
+    });
+    html += `</div>
+      <div class="card-foot">
+        <span style="color:#b5e550">P ${meal.protein}g</span>
+        <span style="color:#50c0e5">C ${meal.carbs}g</span>
+        <span style="color:#e5a050">F ${meal.fats}g</span>
+      </div>
+    </div>`;
+  });
+  html += `</div></div>`;
+
+  document.getElementById("results").innerHTML = html;
+}
+
+// ── Generate ──────────────────────────────────────────────────────────────────
+async function generate() {
+  if (isLoading) return;
+  isLoading = true;
+
+  const btn     = document.getElementById("genBtn");
+  const btnIcon = document.getElementById("btnIcon");
+  const btnText = document.getElementById("btnText");
+  btn.disabled  = true;
+  btnIcon.innerHTML = `<span class="spin">◌</span>`;
+  btnText.textContent = "Crafting your meals…";
+  document.getElementById("errorBox").style.display = "none";
+  document.getElementById("results").innerHTML = "";
+
+  const ing = DAY_DATA[activeDay].ingredients;
+
+  const prompt = `You are a precision nutrition meal planner. Using ONLY these ingredients: ${ing.join(", ")}, create a high-protein daily meal plan with exactly 4 meals: Breakfast, Lunch, Dinner, Snack.
+
+STRICT MACRO TARGETS for the full day — these are ABSOLUTE LIMITS, not guidelines:
+- Total Calories: 1480-1500 kcal (prefer 1500, never exceed 1500)
+- Total Protein: 110-115g
+- Total Carbohydrates: MAX 128g — you MUST NOT exceed 128g under any circumstances. Target 125-128g.
+- Total Fat: MAX 55g — you MUST NOT exceed 55g under any circumstances. Target 50-55g.
+
+BEFORE returning your answer, verify: sum all meal carbs — if total > 128g, reduce portions. Sum all meal fats — if total > 55g, reduce fat sources. Only submit if both limits are respected.
+
+RULES:
+1. Use ONLY the listed ingredients. No substitutions.
+2. Use tbsp or tsp for most measurements. For proteins (chicken, turkey, ground beef, tofu), use grams (e.g. "120g grilled chicken breast"). For banana, use grams (e.g. "80g banana"). For apple, use grams (e.g. "120g apple"). Never say "palm-sized", "piece", or "1 unit".
+3. Each meal must be realistic and delicious.
+4. Protein must be spread across all meals.
+5. Carefully track carbs — rice (4 tbsp cooked ~18g carbs), pasta (4 tbsp cooked ~20g carbs), banana (80g ~18g carbs, 100g ~23g carbs), apple (120g ~15g carbs, 150g ~19g carbs), bread (1 slice ~30g = ~15g carbs), raisins (1 tbsp ~8g carbs), rice cakes (1 cake ~9g = ~7g carbs). Adjust portions precisely.
+6. For fromage blanc 0%: ALWAYS measure in tbsp (1 tbsp ~15g = ~1g protein, ~1g carbs, 0g fat).
+7. For eggs: specify cooking method — boiled, soft-boiled, poached, fried, or scrambled.
+8. For ground beef/meat: specify cooking method — pan-fried, oven-baked, or stir-fried.
+9. For chicken breast: specify cooking method — grilled, pan-seared, oven-baked, poached, or stir-fried.
+10. For turkey breast: specify cooking method — grilled, pan-seared, or oven-baked.
+11. Embed cooking method naturally in the ingredient name.
+
+Respond with ONLY valid JSON, no markdown, no backticks. Schema:
+{"meals":[{"name":"Creative meal name","calories":0,"protein":0,"carbs":0,"fats":0,"ingredients":[{"amount":"2 tbsp","name":"ingredient"}]}],"totals":{"cal":0,"protein":0,"carbs":0,"fats":0}}`;
+
+  const MAX = 3;
+  let attempt = 0, lastError = null;
+
+  while (attempt < MAX) {
+    attempt++;
+    try {
+      const retryNote = attempt > 1
+        ? `\n\nATTENTION: Attempt ${attempt}/${MAX}. Carbs MUST be <=128g and Fat MUST be <=55g. Reduce portions — do not exceed these limits.`
+        : "";
+
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1500,
+          system: "You are a nutrition meal planner. You output ONLY valid JSON. No preamble, no explanation, no markdown, no backticks. Your entire response must be a single JSON object starting with { and ending with }.",
+          messages: [{ role: "user", content: prompt + retryNote }],
+        }),
+      });
+
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error?.message || "API error");
+
+      const rawText  = data.content.map(b => b.text || "").join("");
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON found in response");
+
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      if (parsed.totals.carbs > 128) { lastError = `Carbs too high (${parsed.totals.carbs}g). Retrying…`; continue; }
+      if (parsed.totals.fats  > 55)  { lastError = `Fat too high (${parsed.totals.fats}g). Retrying…`;   continue; }
+
+      render(parsed);
+      isLoading = false;
+      btn.disabled = false;
+      btnIcon.textContent = "✦";
+      btnText.textContent = `Regenerate ${DAY_DATA[activeDay].label}'s Meal Plan`;
+      return;
+
+    } catch (e) {
+      lastError = e.message || "Something went wrong.";
+    }
+  }
+
+  const err = document.getElementById("errorBox");
+  err.textContent = `⚠ Could not generate a valid plan after ${MAX} attempts. ${lastError}`;
+  err.style.display = "block";
+  isLoading = false;
+  btn.disabled = false;
+  btnIcon.textContent = "✦";
+  btnText.textContent = `Try Again`;
+}
+
+document.getElementById("genBtn").addEventListener("click", generate);
+
+// ── PWA Install ───────────────────────────────────────────────────────────────
+let deferredPrompt = null;
+
+// Android / Desktop: capture install prompt
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById("installBanner").classList.add("visible");
+});
+
+document.getElementById("installBtn").addEventListener("click", async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById("installBanner").classList.remove("visible");
+});
+
+document.getElementById("dismissBtn").addEventListener("click", () => {
+  document.getElementById("installBanner").classList.remove("visible");
+});
+
+// iOS: show "Add to Home Screen" tip if in Safari and not already installed
+const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isInStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+if (isIos && !isInStandalone) {
+  document.getElementById("iosTip").classList.add("visible");
+}
+
+document.getElementById("dismissIos").addEventListener("click", () => {
+  document.getElementById("iosTip").classList.remove("visible");
+});
+
+// ── Service Worker ────────────────────────────────────────────────────────────
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
