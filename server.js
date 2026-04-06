@@ -5,12 +5,10 @@ const fetch   = require("node-fetch");
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Middleware ────────────────────────────────────────────────────────────────
-app.use(cors());           // allow requests from your PWA domain
+app.use(cors());
 app.use(express.json());
-app.use(express.static("public")); // serve the PWA files from /public
+app.use(express.static("public"));
 
-// ── Proxy endpoint ────────────────────────────────────────────────────────────
 app.post("/api/chat", async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -21,9 +19,9 @@ app.post("/api/chat", async (req, res) => {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Content-Type":         "application/json",
-        "x-api-key":            apiKey,
-        "anthropic-version":    "2023-06-01",
+        "Content-Type":      "application/json",
+        "x-api-key":         apiKey,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify(req.body),
     });
